@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { divIcon } from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import {
@@ -15,7 +15,6 @@ import {
   Bookmark,
   CalendarDays,
   Check,
-  ChevronDown,
   Clock3,
   Crosshair,
   Filter,
@@ -32,62 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { isAthensWideSearch, matchesSearch } from "./search.js";
-
-const parkingAreas = [
-  { id: 1, area: "Σύνταγμα", landmark: "Πλατεία Συντάγματος", latitude: 37.9755, longitude: 23.7348, total: 42, current: 8, price: "€2,50", type: "Ιδιωτικό" },
-  { id: 2, area: "Εμπορικό Τρίγωνο", landmark: "Οδός Ερμού", latitude: 37.9769, longitude: 23.7309, total: 56, current: 11, price: "€1,80", type: "Στον δρόμο" },
-  { id: 3, area: "Πλάκα", landmark: "Οδός Κυδαθηναίων", latitude: 37.9725, longitude: 23.7308, total: 38, current: 7, price: "€2,00", type: "Ιδιωτικό" },
-  { id: 4, area: "Μοναστηράκι", landmark: "Πλατεία Μοναστηρακίου", latitude: 37.9763, longitude: 23.7255, total: 58, current: 12, price: "€2,00", type: "Ιδιωτικό" },
-  { id: 5, area: "Ψυρρή", landmark: "Οδός Καραϊσκάκη", latitude: 37.9784, longitude: 23.7246, total: 44, current: 9, price: "€1,80", type: "Στον δρόμο" },
-  { id: 6, area: "Θησείο", landmark: "Οδός Αποστόλου Παύλου", latitude: 37.9764, longitude: 23.7209, total: 36, current: 8, price: "€1,80", type: "Στον δρόμο" },
-  { id: 7, area: "Κεραμεικός", landmark: "Πλατεία Κεραμεικού", latitude: 37.9785, longitude: 23.7136, total: 62, current: 14, price: "€2,00", type: "Ιδιωτικό" },
-  { id: 8, area: "Γκάζι", landmark: "Οδός Βουτάδων", latitude: 37.9781, longitude: 23.7117, total: 70, current: 16, price: "€2,20", type: "Ιδιωτικό" },
-  { id: 9, area: "Ομόνοια", landmark: "Πλατεία Ομονοίας", latitude: 37.9842, longitude: 23.7284, total: 48, current: 10, price: "€1,80", type: "Στον δρόμο" },
-  { id: 10, area: "Μεταξουργείο", landmark: "Πλατεία Αυδή", latitude: 37.9857, longitude: 23.7215, total: 54, current: 13, price: "€2,00", type: "Ιδιωτικό" },
-  { id: 11, area: "Εξάρχεια", landmark: "Πλατεία Εξαρχείων", latitude: 37.9861, longitude: 23.7348, total: 40, current: 6, price: "€1,50", type: "Στον δρόμο" },
-  { id: 12, area: "Κολωνάκι", landmark: "Πλατεία Κολωνακίου", latitude: 37.9799, longitude: 23.7408, total: 34, current: 5, price: "€2,50", type: "Ιδιωτικό" },
-  { id: 13, area: "Λυκαβηττός", landmark: "Οδός Δεινοκράτους", latitude: 37.9797, longitude: 23.746, total: 28, current: 4, price: "€2,00", type: "Στον δρόμο" },
-  { id: 14, area: "Κουκάκι", landmark: "Οδός Βεΐκου", latitude: 37.9645, longitude: 23.7275, total: 46, current: 12, price: "€2,00", type: "Στον δρόμο" },
-  { id: 15, area: "Μακρυγιάννη", landmark: "Μουσείο Ακρόπολης", latitude: 37.9684, longitude: 23.7301, total: 32, current: 6, price: "€2,20", type: "Ιδιωτικό" },
-  { id: 16, area: "Μετς", landmark: "Οδός Μάρκου Μουσούρου", latitude: 37.9646, longitude: 23.7382, total: 31, current: 7, price: "€1,50", type: "Στον δρόμο" },
-  { id: 17, area: "Παγκράτι", landmark: "Πλατεία Προσκόπων", latitude: 37.9679, longitude: 23.7448, total: 52, current: 11, price: "€1,80", type: "Ιδιωτικό" },
-  { id: 18, area: "Πετράλωνα", landmark: "Πλατεία Ηούς", latitude: 37.9683, longitude: 23.7101, total: 43, current: 9, price: "€1,50", type: "Στον δρόμο" },
-  { id: 19, area: "Νέος Κόσμος", landmark: "Σταθμός Μετρό Νέος Κόσμος", latitude: 37.9584, longitude: 23.729, total: 68, current: 18, price: "€1,80", type: "Ιδιωτικό" },
-  { id: 20, area: "Βικτώρια", landmark: "Πλατεία Βικτωρίας", latitude: 37.9933, longitude: 23.7292, total: 50, current: 12, price: "€1,50", type: "Στον δρόμο" },
-  { id: 21, area: "Κυψέλη", landmark: "Οδός Φωκίωνος Νέγρη", latitude: 37.993, longitude: 23.7344, total: 54, current: 10, price: "€1,80", type: "Ιδιωτικό" },
-  { id: 22, area: "Ιλίσια", landmark: "Πλατεία Μαδρίτης", latitude: 37.9764, longitude: 23.7557, total: 38, current: 7, price: "€1,80", type: "Στον δρόμο" },
-  { id: 23, area: "Αμπελόκηποι", landmark: "Πλατεία Μαβίλη", latitude: 37.9901, longitude: 23.7545, total: 60, current: 15, price: "€2,00", type: "Ιδιωτικό" },
-  { id: 24, area: "Ακαδημία", landmark: "Ακαδημία Αθηνών", latitude: 37.9805, longitude: 23.734, total: 42, current: 8, price: "€2,00", type: "Ιδιωτικό" },
-];
-
-const syntagmaCoordinates = [37.9755, 23.7348];
-const parkingSpots = parkingAreas.map((area) => {
-  const distanceInKm =
-    (6371 *
-      2 *
-      Math.asin(
-        Math.sqrt(
-          Math.sin(((area.latitude - syntagmaCoordinates[0]) * Math.PI) / 360) ** 2 +
-            Math.cos((syntagmaCoordinates[0] * Math.PI) / 180) *
-              Math.cos((area.latitude * Math.PI) / 180) *
-              Math.sin(((area.longitude - syntagmaCoordinates[1]) * Math.PI) / 360) ** 2,
-        ),
-      ));
-
-  return {
-    ...area,
-    name: `Parking — ${area.area}`,
-    address: `${area.landmark}, ${area.area}, Αθήνα`,
-    distance: `${Math.max(0.1, distanceInKm).toFixed(1).replace(".", ",")} km`,
-    predictions: {
-      "19:00": Math.min(area.total, area.current + Math.round(area.total * 0.15)),
-      "20:00": Math.min(area.total, area.current + Math.round(area.total * 0.3)),
-      "21:00": Math.min(area.total, area.current + Math.round(area.total * 0.45)),
-    },
-  };
-});
-
-const timeOptions = ["19:00", "20:00", "21:00"];
+import { getAvailableSpaces, parkingSpots } from "./parkingData.js";
 
 function MapZoomControls() {
   const map = useMap();
@@ -115,24 +59,45 @@ function MapZoomControls() {
   );
 }
 
+function FitParkingSpots({ spots }) {
+  const map = useMap();
+  const previousSpots = useRef(null);
+
+  useEffect(() => {
+    if (previousSpots.current === spots) return;
+    previousSpots.current = spots;
+    if (spots.length === 0) return;
+    if (spots.length === 1) {
+      map.setView([spots[0].latitude, spots[0].longitude], 15);
+      return;
+    }
+    map.fitBounds(
+      spots.map((spot) => [spot.latitude, spot.longitude]),
+      { padding: [36, 36], maxZoom: 14 },
+    );
+  }, [map, spots]);
+
+  return null;
+}
+
 function App() {
-  const [query, setQuery] = useState("Κέντρο Αθήνας");
-  const [destination, setDestination] = useState("Κέντρο Αθήνας");
+  const [query, setQuery] = useState("");
+  const [destination, setDestination] = useState("");
   const [arrivalMode, setArrivalMode] = useState("now");
   const [selectedTime, setSelectedTime] = useState("19:00");
   const [view, setView] = useState("map");
-  const [selectedSpot, setSelectedSpot] = useState(1);
+  const [selectedSpot, setSelectedSpot] = useState("1-1");
   const [savedSpots, setSavedSpots] = useState([]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [notice, setNotice] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [privateOnly, setPrivateOnly] = useState(false);
+  const [parkingType, setParkingType] = useState("Όλα");
   const [sortByDistance, setSortByDistance] = useState(true);
 
   const isFuture = arrivalMode === "future";
-  const spots = useMemo(() => {
+  const filteredSpots = useMemo(() => {
     const allCentralAreas = isAthensWideSearch(destination);
-    const filtered = parkingSpots.filter((spot) => {
+    return parkingSpots.filter((spot) => {
       const matchesDestination =
         !destination.trim() ||
         allCentralAreas ||
@@ -140,20 +105,22 @@ function App() {
       return favoritesOnly
         ? savedSpots.includes(spot.id)
         : matchesDestination &&
-            (!privateOnly || spot.type === "Ιδιωτικό");
+            (parkingType === "Όλα" || spot.type === parkingType);
     });
+  }, [destination, favoritesOnly, parkingType, savedSpots]);
 
-    return [...filtered].sort((a, b) =>
+  const spots = useMemo(() => {
+    return [...filteredSpots].sort((a, b) =>
       sortByDistance
         ? Number.parseFloat(a.distance.replace(",", ".")) -
           Number.parseFloat(b.distance.replace(",", "."))
-        : (isFuture ? b.predictions[selectedTime] : b.current) -
-          (isFuture ? a.predictions[selectedTime] : a.current),
+        : getAvailableSpaces(b, isFuture, selectedTime) -
+          getAvailableSpaces(a, isFuture, selectedTime),
     );
-  }, [destination, favoritesOnly, isFuture, privateOnly, savedSpots, selectedTime, sortByDistance]);
+  }, [filteredSpots, isFuture, selectedTime, sortByDistance]);
 
   const totalAvailable = spots.reduce(
-    (sum, spot) => sum + (isFuture ? spot.predictions[selectedTime] : spot.current),
+    (sum, spot) => sum + getAvailableSpaces(spot, isFuture, selectedTime),
     0,
   );
 
@@ -166,14 +133,14 @@ function App() {
   function search(event) {
     event.preventDefault();
     const nextDestination = query.trim();
-    if (!nextDestination) {
-      setNotice("Πληκτρολόγησε πρώτα μια περιοχή αναζήτησης.");
-      return;
-    }
     setDestination(nextDestination);
     const matchingSpot = parkingSpots.find((spot) => matchesSearch(nextDestination, spot));
-    setSelectedSpot(matchingSpot?.id ?? 1);
-    setNotice(`Εμφάνιση διαθέσιμων θέσεων για «${nextDestination}».`);
+    setSelectedSpot(matchingSpot?.id ?? parkingSpots[0].id);
+    setNotice(
+      nextDestination
+        ? `Εμφάνιση διαθέσιμων θέσεων για «${nextDestination}».`
+        : "Εμφάνιση parking σε όλες τις περιοχές.",
+    );
   }
 
   function announce(message) {
@@ -268,7 +235,7 @@ function App() {
                 aria-label="Περιοχή προορισμού"
                 className="w-full bg-transparent text-[14px] font-medium outline-none placeholder:text-[#b4b4ae]"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Π.χ. Κέντρο Αθήνας"
+                placeholder="Π.χ. Σύνταγμα ή Syntagma"
                 value={query}
               />
             </label>
@@ -305,17 +272,19 @@ function App() {
                 {isFuture && (
                   <label className="relative ml-auto">
                     <span className="sr-only">Επιλογή ώρας πρόβλεψης</span>
-                    <select
+                    <input
                       aria-label="Επιλογή ώρας πρόβλεψης"
-                      className="cursor-pointer appearance-none rounded-md border border-[#e9e3d6] bg-[#fcfaf6] py-1 pl-2 pr-6 text-[12px] font-semibold text-[#765b29] outline-none focus:border-[#c8a35d]"
-                      onChange={(event) => setSelectedTime(event.target.value)}
+                      className="w-[100px] cursor-pointer rounded-md border border-[#e9e3d6] bg-[#fcfaf6] px-2 py-1 text-[12px] font-semibold text-[#765b29] outline-none focus:border-[#c8a35d]"
+                      lang="en-GB"
+                      max="23:59"
+                      min="00:00"
+                      onChange={(event) => {
+                        if (event.target.value) setSelectedTime(event.target.value);
+                      }}
+                      step="60"
+                      type="time"
                       value={selectedTime}
-                    >
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[#987b43]" size={13} />
+                    />
                   </label>
                 )}
               </div>
@@ -375,14 +344,18 @@ function App() {
               {filterOpen && (
                 <div className="absolute right-0 top-[42px] z-30 w-56 rounded-xl border border-[#eeede9] bg-white p-4 shadow-xl">
                   <p className="mb-3 text-[12px] font-semibold">Ταξινόμηση & φίλτρα</p>
-                  <label className="mb-3 flex cursor-pointer items-center justify-between text-[11px] text-[#696a64]">
-                    <span>Μόνο ιδιωτικά parking</span>
-                    <input
-                      checked={privateOnly}
-                      className="accent-[#bd9141]"
-                      onChange={(event) => setPrivateOnly(event.target.checked)}
-                      type="checkbox"
-                    />
+                  <label className="mb-3 block text-[11px] text-[#696a64]">
+                    <span className="mb-1.5 block">Τύπος parking</span>
+                    <select
+                      aria-label="Φίλτρο τύπου parking"
+                      className="w-full rounded-md border border-[#e9e8e3] bg-white px-2 py-1.5 text-[11px] outline-none focus:border-[#c8a35d]"
+                      onChange={(event) => setParkingType(event.target.value)}
+                      value={parkingType}
+                    >
+                      <option value="Όλα">Όλα τα parking</option>
+                      <option value="Ιδιωτικό">Ιδιωτικό</option>
+                      <option value="Δημόσιο">Δημόσιο</option>
+                    </select>
                   </label>
                   <button
                     className="flex w-full items-center justify-between border-t border-[#f1f0ed] pt-3 text-left text-[11px] text-[#696a64]"
@@ -421,17 +394,18 @@ function App() {
           {view === "map" && (
             <div className="map-surface relative h-[420px] overflow-hidden rounded-2xl border border-[#e9e8e3] bg-[#e9ede5] sm:h-[490px]">
               <MapContainer
-                aria-label={`Διαδραστικός χάρτης της Αθήνας με ${spots.length} περιοχές στάθμευσης`}
+                aria-label={`Διαδραστικός χάρτης της Αθήνας με ${spots.length} parking`}
                 center={[37.978, 23.734]}
                 className="absolute inset-0 z-0"
                 scrollWheelZoom
-                zoom={12.7}
+                zoom={12}
                 zoomControl={false}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 />
+                <FitParkingSpots spots={filteredSpots} />
                 <MarkerClusterGroup
                   iconCreateFunction={(cluster) =>
                     divIcon({
@@ -445,9 +419,11 @@ function App() {
                   showCoverageOnHover={false}
                 >
                   {spots.map((spot) => {
-                    const available = isFuture
-                      ? spot.predictions[selectedTime]
-                      : spot.current;
+                    const available = getAvailableSpaces(
+                      spot,
+                      isFuture,
+                      selectedTime,
+                    );
                     const selected = spot.id === selectedSpot;
                     const icon = divIcon({
                       className: "parking-map-icon",
@@ -484,7 +460,7 @@ function App() {
               </button>
               <div className="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-medium text-[#66675f] shadow-sm backdrop-blur">
                 <Crosshair size={13} className="text-[#bd9141]" />
-                <span>Αθήνα · {spots.length} περιοχές</span>
+                <span>Αθήνα · {spots.length} parking</span>
               </div>
               <div className="absolute bottom-4 left-4 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-[10px] text-[#777870] shadow-sm backdrop-blur">
                 <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#b79c67]" />
@@ -513,16 +489,16 @@ function App() {
                   if (favoritesOnly) {
                     setFavoritesOnly(false);
                   } else {
-                    setPrivateOnly(false);
-                    setQuery("Κέντρο Αθήνας");
-                    setDestination("Κέντρο Αθήνας");
+                    setParkingType("Όλα");
+                    setQuery("");
+                    setDestination("");
                   }
                 }}>
                   {favoritesOnly ? "Εμφάνιση όλων των parking" : "Επαναφορά αναζήτησης"}
                 </button>
               </div>
             ) : spots.map((spot) => {
-              const available = isFuture ? spot.predictions[selectedTime] : spot.current;
+              const available = getAvailableSpaces(spot, isFuture, selectedTime);
               const isSelected = selectedSpot === spot.id;
               const saved = savedSpots.includes(spot.id);
               return (
