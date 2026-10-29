@@ -1,4 +1,13 @@
 import { useMemo, useState } from "react";
+import { divIcon } from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import {
+  MapContainer,
+  Marker,
+  TileLayer,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
 import {
   ArrowDownUp,
   ArrowRight,
@@ -22,63 +31,89 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { isAthensWideSearch, matchesSearch } from "./search.js";
 
-const parkingSpots = [
-  {
-    id: 1,
-    name: "Parking Πλατείας",
-    address: "Πλατεία Συντάγματος, Αθήνα",
-    distance: "0,3 km",
-    total: 42,
-    current: 8,
-    predictions: { "19:00": 14, "20:00": 21, "21:00": 27 },
-    price: "€2,50",
-    type: "Ιδιωτικό",
-    x: "48%",
-    y: "40%",
-  },
-  {
-    id: 2,
-    name: "Θέσεις Ερμού",
-    address: "Οδός Ερμού 18, Αθήνα",
-    distance: "0,5 km",
-    total: 26,
-    current: 3,
-    predictions: { "19:00": 9, "20:00": 15, "21:00": 18 },
-    price: "€1,80",
-    type: "Στον δρόμο",
-    x: "64%",
-    y: "57%",
-  },
-  {
-    id: 3,
-    name: "Parking Μοναστηράκι",
-    address: "Πλατεία Μοναστηρακίου",
-    distance: "0,8 km",
-    total: 58,
-    current: 12,
-    predictions: { "19:00": 19, "20:00": 25, "21:00": 31 },
-    price: "€2,00",
-    type: "Ιδιωτικό",
-    x: "32%",
-    y: "66%",
-  },
-  {
-    id: 4,
-    name: "Θέσεις Κολωνακίου",
-    address: "Οδός Σκουφά, Κολωνάκι",
-    distance: "1,1 km",
-    total: 18,
-    current: 2,
-    predictions: { "19:00": 5, "20:00": 8, "21:00": 11 },
-    price: "€1,50",
-    type: "Στον δρόμο",
-    x: "70%",
-    y: "27%",
-  },
+const parkingAreas = [
+  { id: 1, area: "Σύνταγμα", landmark: "Πλατεία Συντάγματος", latitude: 37.9755, longitude: 23.7348, total: 42, current: 8, price: "€2,50", type: "Ιδιωτικό" },
+  { id: 2, area: "Εμπορικό Τρίγωνο", landmark: "Οδός Ερμού", latitude: 37.9769, longitude: 23.7309, total: 56, current: 11, price: "€1,80", type: "Στον δρόμο" },
+  { id: 3, area: "Πλάκα", landmark: "Οδός Κυδαθηναίων", latitude: 37.9725, longitude: 23.7308, total: 38, current: 7, price: "€2,00", type: "Ιδιωτικό" },
+  { id: 4, area: "Μοναστηράκι", landmark: "Πλατεία Μοναστηρακίου", latitude: 37.9763, longitude: 23.7255, total: 58, current: 12, price: "€2,00", type: "Ιδιωτικό" },
+  { id: 5, area: "Ψυρρή", landmark: "Οδός Καραϊσκάκη", latitude: 37.9784, longitude: 23.7246, total: 44, current: 9, price: "€1,80", type: "Στον δρόμο" },
+  { id: 6, area: "Θησείο", landmark: "Οδός Αποστόλου Παύλου", latitude: 37.9764, longitude: 23.7209, total: 36, current: 8, price: "€1,80", type: "Στον δρόμο" },
+  { id: 7, area: "Κεραμεικός", landmark: "Πλατεία Κεραμεικού", latitude: 37.9785, longitude: 23.7136, total: 62, current: 14, price: "€2,00", type: "Ιδιωτικό" },
+  { id: 8, area: "Γκάζι", landmark: "Οδός Βουτάδων", latitude: 37.9781, longitude: 23.7117, total: 70, current: 16, price: "€2,20", type: "Ιδιωτικό" },
+  { id: 9, area: "Ομόνοια", landmark: "Πλατεία Ομονοίας", latitude: 37.9842, longitude: 23.7284, total: 48, current: 10, price: "€1,80", type: "Στον δρόμο" },
+  { id: 10, area: "Μεταξουργείο", landmark: "Πλατεία Αυδή", latitude: 37.9857, longitude: 23.7215, total: 54, current: 13, price: "€2,00", type: "Ιδιωτικό" },
+  { id: 11, area: "Εξάρχεια", landmark: "Πλατεία Εξαρχείων", latitude: 37.9861, longitude: 23.7348, total: 40, current: 6, price: "€1,50", type: "Στον δρόμο" },
+  { id: 12, area: "Κολωνάκι", landmark: "Πλατεία Κολωνακίου", latitude: 37.9799, longitude: 23.7408, total: 34, current: 5, price: "€2,50", type: "Ιδιωτικό" },
+  { id: 13, area: "Λυκαβηττός", landmark: "Οδός Δεινοκράτους", latitude: 37.9797, longitude: 23.746, total: 28, current: 4, price: "€2,00", type: "Στον δρόμο" },
+  { id: 14, area: "Κουκάκι", landmark: "Οδός Βεΐκου", latitude: 37.9645, longitude: 23.7275, total: 46, current: 12, price: "€2,00", type: "Στον δρόμο" },
+  { id: 15, area: "Μακρυγιάννη", landmark: "Μουσείο Ακρόπολης", latitude: 37.9684, longitude: 23.7301, total: 32, current: 6, price: "€2,20", type: "Ιδιωτικό" },
+  { id: 16, area: "Μετς", landmark: "Οδός Μάρκου Μουσούρου", latitude: 37.9646, longitude: 23.7382, total: 31, current: 7, price: "€1,50", type: "Στον δρόμο" },
+  { id: 17, area: "Παγκράτι", landmark: "Πλατεία Προσκόπων", latitude: 37.9679, longitude: 23.7448, total: 52, current: 11, price: "€1,80", type: "Ιδιωτικό" },
+  { id: 18, area: "Πετράλωνα", landmark: "Πλατεία Ηούς", latitude: 37.9683, longitude: 23.7101, total: 43, current: 9, price: "€1,50", type: "Στον δρόμο" },
+  { id: 19, area: "Νέος Κόσμος", landmark: "Σταθμός Μετρό Νέος Κόσμος", latitude: 37.9584, longitude: 23.729, total: 68, current: 18, price: "€1,80", type: "Ιδιωτικό" },
+  { id: 20, area: "Βικτώρια", landmark: "Πλατεία Βικτωρίας", latitude: 37.9933, longitude: 23.7292, total: 50, current: 12, price: "€1,50", type: "Στον δρόμο" },
+  { id: 21, area: "Κυψέλη", landmark: "Οδός Φωκίωνος Νέγρη", latitude: 37.993, longitude: 23.7344, total: 54, current: 10, price: "€1,80", type: "Ιδιωτικό" },
+  { id: 22, area: "Ιλίσια", landmark: "Πλατεία Μαδρίτης", latitude: 37.9764, longitude: 23.7557, total: 38, current: 7, price: "€1,80", type: "Στον δρόμο" },
+  { id: 23, area: "Αμπελόκηποι", landmark: "Πλατεία Μαβίλη", latitude: 37.9901, longitude: 23.7545, total: 60, current: 15, price: "€2,00", type: "Ιδιωτικό" },
+  { id: 24, area: "Ακαδημία", landmark: "Ακαδημία Αθηνών", latitude: 37.9805, longitude: 23.734, total: 42, current: 8, price: "€2,00", type: "Ιδιωτικό" },
 ];
 
+const syntagmaCoordinates = [37.9755, 23.7348];
+const parkingSpots = parkingAreas.map((area) => {
+  const distanceInKm =
+    (6371 *
+      2 *
+      Math.asin(
+        Math.sqrt(
+          Math.sin(((area.latitude - syntagmaCoordinates[0]) * Math.PI) / 360) ** 2 +
+            Math.cos((syntagmaCoordinates[0] * Math.PI) / 180) *
+              Math.cos((area.latitude * Math.PI) / 180) *
+              Math.sin(((area.longitude - syntagmaCoordinates[1]) * Math.PI) / 360) ** 2,
+        ),
+      ));
+
+  return {
+    ...area,
+    name: `Parking — ${area.area}`,
+    address: `${area.landmark}, ${area.area}, Αθήνα`,
+    distance: `${Math.max(0.1, distanceInKm).toFixed(1).replace(".", ",")} km`,
+    predictions: {
+      "19:00": Math.min(area.total, area.current + Math.round(area.total * 0.15)),
+      "20:00": Math.min(area.total, area.current + Math.round(area.total * 0.3)),
+      "21:00": Math.min(area.total, area.current + Math.round(area.total * 0.45)),
+    },
+  };
+});
+
 const timeOptions = ["19:00", "20:00", "21:00"];
+
+function MapZoomControls() {
+  const map = useMap();
+
+  return (
+    <div className="leaflet-top leaflet-right map-controls">
+      <div className="leaflet-control map-zoom-controls">
+        <button
+          aria-label="Μεγέθυνση χάρτη"
+          onClick={() => map.zoomIn()}
+          type="button"
+        >
+          <Plus size={14} />
+        </button>
+        <span />
+        <button
+          aria-label="Σμίκρυνση χάρτη"
+          onClick={() => map.zoomOut()}
+          type="button"
+        >
+          <Minus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [query, setQuery] = useState("Κέντρο Αθήνας");
@@ -88,6 +123,7 @@ function App() {
   const [view, setView] = useState("map");
   const [selectedSpot, setSelectedSpot] = useState(1);
   const [savedSpots, setSavedSpots] = useState([]);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [notice, setNotice] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [privateOnly, setPrivateOnly] = useState(false);
@@ -95,13 +131,16 @@ function App() {
 
   const isFuture = arrivalMode === "future";
   const spots = useMemo(() => {
+    const allCentralAreas = isAthensWideSearch(destination);
     const filtered = parkingSpots.filter((spot) => {
       const matchesDestination =
         !destination.trim() ||
-        /αθήν|athen|κέντρο|center/i.test(destination) ||
-        spot.address.toLocaleLowerCase("el").includes(destination.toLocaleLowerCase("el")) ||
-        spot.name.toLocaleLowerCase("el").includes(destination.toLocaleLowerCase("el"));
-      return matchesDestination && (!privateOnly || spot.type === "Ιδιωτικό");
+        allCentralAreas ||
+        matchesSearch(destination, spot);
+      return favoritesOnly
+        ? savedSpots.includes(spot.id)
+        : matchesDestination &&
+            (!privateOnly || spot.type === "Ιδιωτικό");
     });
 
     return [...filtered].sort((a, b) =>
@@ -111,12 +150,19 @@ function App() {
         : (isFuture ? b.predictions[selectedTime] : b.current) -
           (isFuture ? a.predictions[selectedTime] : a.current),
     );
-  }, [destination, isFuture, privateOnly, selectedTime, sortByDistance]);
+  }, [destination, favoritesOnly, isFuture, privateOnly, savedSpots, selectedTime, sortByDistance]);
 
   const totalAvailable = spots.reduce(
     (sum, spot) => sum + (isFuture ? spot.predictions[selectedTime] : spot.current),
     0,
   );
+
+  function toggleFavoritesView() {
+    setFavoritesOnly((showingFavorites) => !showingFavorites);
+    setView("list");
+    document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
+  }
+
   function search(event) {
     event.preventDefault();
     const nextDestination = query.trim();
@@ -125,7 +171,8 @@ function App() {
       return;
     }
     setDestination(nextDestination);
-    setSelectedSpot(1);
+    const matchingSpot = parkingSpots.find((spot) => matchesSearch(nextDestination, spot));
+    setSelectedSpot(matchingSpot?.id ?? 1);
     setNotice(`Εμφάνιση διαθέσιμων θέσεων για «${nextDestination}».`);
   }
 
@@ -158,10 +205,11 @@ function App() {
           <div className="hidden items-center gap-8 text-[13px] font-medium text-[#686963] md:flex">
             <a className="text-[#252621]" href="#results">Εξερεύνηση</a>
             <button
-              className="transition-colors hover:text-[#bd9141]"
-              onClick={() => announce("Οι αποθηκευμένες θέσεις σου είναι σημειωμένες με ♥.")}
+              aria-pressed={favoritesOnly}
+              className={`transition-colors hover:text-[#bd9141] ${favoritesOnly ? "text-[#a47b35]" : ""}`}
+              onClick={toggleFavoritesView}
             >
-              Τα αγαπημένα μου
+              {favoritesOnly ? "Όλα τα parking" : `Τα αγαπημένα μου${savedSpots.length ? ` (${savedSpots.length})` : ""}`}
             </button>
             <button
               className="transition-colors hover:text-[#bd9141]"
@@ -179,11 +227,12 @@ function App() {
               <Users size={15} /> Σύνδεση
             </button>
             <button
-              aria-label="Άνοιγμα μενού"
+              aria-label={favoritesOnly ? "Εμφάνιση όλων των parking" : "Τα αγαπημένα μου"}
+              aria-pressed={favoritesOnly}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e7e2] text-[#55564f] sm:hidden"
-              onClick={() => announce("Μενού: Εξερεύνηση · Αγαπημένα · Σύνδεση")}
+              onClick={toggleFavoritesView}
             >
-              <Menu size={17} />
+              <Bookmark size={16} fill={favoritesOnly ? "currentColor" : "none"} />
             </button>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-[#eee8dc] text-xs font-semibold text-[#82652e] sm:flex">
               Α
@@ -285,7 +334,9 @@ function App() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3" id="results">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-[17px] font-semibold tracking-[-0.4px]">Κοντινές θέσεις</h2>
+              <h2 className="text-[17px] font-semibold tracking-[-0.4px]">
+                {favoritesOnly ? "Τα αγαπημένα μου" : "Κοντινές θέσεις"}
+              </h2>
               <span className="rounded-full bg-[#eeede9] px-2 py-0.5 text-[10px] font-medium text-[#777870]">
                 {spots.length} σημεία
               </span>
@@ -354,7 +405,7 @@ function App() {
               </span>
               <div>
                 <p className="text-[11px] font-semibold text-[#6c5428]">Προβλεπόμενη διαθεσιμότητα</p>
-                <p className="text-[10px] text-[#9a8868]">Εκτίμηση για τις {selectedTime} βάσει έξυπνου μοντέλου</p>
+                <p className="text-[10px] text-[#9a8868]">Ενδεικτικά στοιχεία mockup για τις {selectedTime}</p>
               </div>
             </div>
             <span className="text-[11px] font-medium text-[#856a39]">
@@ -368,44 +419,61 @@ function App() {
           className={`grid gap-4 ${view === "map" ? "lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,0.92fr)]" : "grid-cols-1"}`}
         >
           {view === "map" && (
-            <div className="map-surface relative min-h-[420px] overflow-hidden rounded-2xl border border-[#e9e8e3] bg-[#e9ede5] sm:min-h-[490px]">
-              <svg
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full"
-                preserveAspectRatio="xMidYMid slice"
-                viewBox="0 0 760 560"
+            <div className="map-surface relative h-[420px] overflow-hidden rounded-2xl border border-[#e9e8e3] bg-[#e9ede5] sm:h-[490px]">
+              <MapContainer
+                aria-label={`Διαδραστικός χάρτης της Αθήνας με ${spots.length} περιοχές στάθμευσης`}
+                center={[37.978, 23.734]}
+                className="absolute inset-0 z-0"
+                scrollWheelZoom
+                zoom={12.7}
+                zoomControl={false}
               >
-                <rect width="760" height="560" fill="#e9ede5" />
-                <path d="M-20 94L780 256M-30 275L760 91M72-20L286 580M405-30L292 590M650-10L456 580" fill="none" stroke="#fffefa" strokeWidth="17" />
-                <path d="M-20 94L780 256M-30 275L760 91M72-20L286 580M405-30L292 590M650-10L456 580" fill="none" stroke="#dfe3da" strokeWidth="1.2" />
-                <path d="M-30 410L770 370M-20 180L780 470M200-30L35 580M534-20L742 580" fill="none" stroke="#fffefa" strokeWidth="11" />
-                <path d="M-30 410L770 370M-20 180L780 470M200-30L35 580M534-20L742 580" fill="none" stroke="#dfe3da" strokeWidth="1" />
-                <path d="M105 168L225 155L248 240L158 275L97 236ZM460 305L575 278L613 357L520 395L444 366ZM340 64L410 72L438 136L354 149Z" fill="#dfe7d9" />
-                <path d="M42 345L121 321L151 385L77 421ZM584 115L671 129L686 198L612 205Z" fill="#dfe7d9" />
-                <path d="M0 520L760 300" fill="none" stroke="#d4b775" strokeWidth="3" strokeDasharray="9 10" opacity=".8" />
-              </svg>
-              <span className="map-label left-[13%] top-[25%]">ΣΥΝΤΑΓΜΑ</span>
-              <span className="map-label left-[58%] top-[17%]">ΚΟΛΩΝΑΚΙ</span>
-              <span className="map-label left-[25%] top-[73%]">ΜΟΝΑΣΤΗΡΑΚΙ</span>
-              <span className="map-label left-[61%] top-[67%]">ΠΛΑΚΑ</span>
-              <span className="map-label left-[43%] top-[46%]">ΕΡΜΟΥ</span>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                />
+                <MarkerClusterGroup
+                  iconCreateFunction={(cluster) =>
+                    divIcon({
+                      className: "area-cluster-icon",
+                      html: `<span class="area-cluster-count">${cluster.getChildCount()}</span>`,
+                      iconSize: [42, 42],
+                      iconAnchor: [21, 21],
+                    })
+                  }
+                  maxClusterRadius={40}
+                  showCoverageOnHover={false}
+                >
+                  {spots.map((spot) => {
+                    const available = isFuture
+                      ? spot.predictions[selectedTime]
+                      : spot.current;
+                    const selected = spot.id === selectedSpot;
+                    const icon = divIcon({
+                      className: "parking-map-icon",
+                      html: `<span class="parking-map-pin${selected ? " is-selected" : ""}${isFuture ? " is-future" : ""}">${available}</span>`,
+                      iconSize: [36, 36],
+                      iconAnchor: [18, 18],
+                    });
 
-              {spots.map((spot) => {
-                const available = isFuture ? spot.predictions[selectedTime] : spot.current;
-                const selected = spot.id === selectedSpot;
-                return (
-                  <button
-                    key={spot.id}
-                    aria-label={`${spot.name}: ${available} ελεύθερες θέσεις`}
-                    className={`map-pin absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-bold shadow-md transition ${selected ? "border-[#252620] bg-[#252620] text-white ring-2 ring-white/80" : "border-white bg-white text-[#34352f] hover:-translate-y-[55%]"} ${isFuture && !selected ? "border-[#d7b56e] text-[#88672c]" : ""}`}
-                    onClick={() => setSelectedSpot(spot.id)}
-                    style={{ left: spot.x, top: spot.y }}
-                  >
-                    {isFuture && <Sparkles size={11} className={selected ? "text-[#e6c27c]" : "text-[#bd9141]"} />}
-                    {available}
-                  </button>
-                );
-              })}
+                    return (
+                      <Marker
+                        key={spot.id}
+                        alt={`${spot.area}: ${available} ενδεικτικά διαθέσιμες θέσεις`}
+                        eventHandlers={{ click: () => setSelectedSpot(spot.id) }}
+                        icon={icon}
+                        position={[spot.latitude, spot.longitude]}
+                        title={`${spot.area}: ${available} διαθέσιμες θέσεις`}
+                      >
+                        <Tooltip direction="top" offset={[0, -16]}>
+                          {spot.area}: {available} θέσεις (ενδεικτικά)
+                        </Tooltip>
+                      </Marker>
+                    );
+                  })}
+                </MarkerClusterGroup>
+                <MapZoomControls />
+              </MapContainer>
 
               <button
                 aria-label="Εστίαση στην τοποθεσία μου"
@@ -416,16 +484,11 @@ function App() {
               </button>
               <div className="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-medium text-[#66675f] shadow-sm backdrop-blur">
                 <Crosshair size={13} className="text-[#bd9141]" />
-                <span>Κέντρο Αθήνας</span>
+                <span>Αθήνα · {spots.length} περιοχές</span>
               </div>
               <div className="absolute bottom-4 left-4 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-[10px] text-[#777870] shadow-sm backdrop-blur">
                 <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#b79c67]" />
-                {isFuture ? "Εκτιμώμενες θέσεις" : "Διαθέσιμες θέσεις"}
-              </div>
-              <div className="absolute right-4 top-4 flex flex-col overflow-hidden rounded-lg border border-[#eae9e4] bg-white shadow-sm">
-                <button aria-label="Μεγέθυνση χάρτη" className="flex h-8 w-8 items-center justify-center text-[#62635b] hover:bg-[#f7f6f3]" onClick={() => announce("Χάρτης σε μεγέθυνση.")}><Plus size={14} /></button>
-                <span className="h-px bg-[#eeede9]" />
-                <button aria-label="Σμίκρυνση χάρτη" className="flex h-8 w-8 items-center justify-center text-[#62635b] hover:bg-[#f7f6f3]" onClick={() => announce("Χάρτης σε σμίκρυνση.")}><Minus size={14} /></button>
+                Ενδεικτικές θέσεις
               </div>
             </div>
           )}
@@ -433,11 +496,29 @@ function App() {
           <div className={`flex flex-col gap-3 ${view === "list" ? "md:grid md:grid-cols-2 xl:grid-cols-3" : ""}`}>
             {spots.length === 0 ? (
               <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#deddd7] bg-white px-6 text-center">
-                <MapPin size={22} className="mb-3 text-[#bd9141]" />
-                <p className="text-[14px] font-semibold">Δεν βρέθηκαν θέσεις</p>
-                <p className="mt-1 text-[12px] text-[#8a8b84]">Δοκίμασε μια διαφορετική περιοχή ή αφαίρεσε τα φίλτρα.</p>
-                <button className="mt-4 text-[12px] font-semibold text-[#9a7737] underline underline-offset-4" onClick={() => { setPrivateOnly(false); setQuery("Κέντρο Αθήνας"); setDestination("Κέντρο Αθήνας"); }}>
-                  Επαναφορά αναζήτησης
+                {favoritesOnly && savedSpots.length === 0
+                  ? <Bookmark size={22} className="mb-3 text-[#bd9141]" />
+                  : <MapPin size={22} className="mb-3 text-[#bd9141]" />}
+                <p className="text-[14px] font-semibold">
+                  {favoritesOnly && savedSpots.length === 0
+                    ? "Δεν έχεις προσθέσει αγαπημένα"
+                    : "Δεν βρέθηκαν θέσεις"}
+                </p>
+                <p className="mt-1 text-[12px] text-[#8a8b84]">
+                  {favoritesOnly && savedSpots.length === 0
+                    ? "Πάτησε το εικονίδιο σε ένα parking για να το αποθηκεύσεις εδώ."
+                    : "Δοκίμασε μια διαφορετική περιοχή ή αφαίρεσε τα φίλτρα."}
+                </p>
+                <button className="mt-4 text-[12px] font-semibold text-[#9a7737] underline underline-offset-4" onClick={() => {
+                  if (favoritesOnly) {
+                    setFavoritesOnly(false);
+                  } else {
+                    setPrivateOnly(false);
+                    setQuery("Κέντρο Αθήνας");
+                    setDestination("Κέντρο Αθήνας");
+                  }
+                }}>
+                  {favoritesOnly ? "Εμφάνιση όλων των parking" : "Επαναφορά αναζήτησης"}
                 </button>
               </div>
             ) : spots.map((spot) => {
@@ -489,7 +570,7 @@ function App() {
                       <div className="h-7 w-px bg-[#eeede9]" />
                       <div>
                         <p className="text-[12px] font-semibold">{spot.distance}</p>
-                        <p className="mt-1 text-[9px] text-[#888981]">απόσταση</p>
+                        <p className="mt-1 text-[9px] text-[#888981]">από Σύνταγμα</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -528,8 +609,8 @@ function App() {
         <div className="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-[#999a93]">
           <Sparkles size={12} className="text-[#bd9141]" />
           {isFuture
-            ? "Οι προβλέψεις είναι ενδεικτικές και βασίζονται σε dummy δεδομένα."
-            : "Η διαθεσιμότητα ενημερώνεται σε πραγματικό χρόνο."}
+            ? "Οι προβλέψεις και οι διαθέσιμες θέσεις είναι ενδεικτικά δεδομένα mockup, όχι ζωντανή ενημέρωση."
+            : "Οι διαθέσιμες θέσεις είναι ενδεικτικά δεδομένα mockup, όχι ζωντανή ενημέρωση."}
         </div>
 
         <footer className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[#eae9e4] pt-5 text-[10px] text-[#999a93] sm:flex-row">

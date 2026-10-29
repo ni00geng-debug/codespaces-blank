@@ -1,4 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "leaflet/dist/leaflet.css";
+@import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+@import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 @import "tailwindcss";
 
 :root {
@@ -31,30 +34,97 @@ button {
 }
 
 .map-surface {
-  background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.2), transparent 70%);
+  isolation: isolate;
 }
 
-.map-label {
-  position: absolute;
-  z-index: 1;
-  color: #898f82;
-  font-size: 8px;
+.map-surface .leaflet-container {
+  height: 100%;
+  width: 100%;
+  font-family: inherit;
+}
+
+.parking-map-icon {
+  background: transparent;
+  border: 0;
+}
+
+.area-cluster-icon {
+  border: 0;
+  background: transparent;
+}
+
+.area-cluster-count {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgb(255 255 255 / 90%);
+  border-radius: 9999px;
+  background: #bd9141;
+  color: #fff;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 1.15px;
-  pointer-events: none;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
 }
 
-.map-pin {
-  animation: pin-in 220ms ease-out both;
+.parking-map-pin {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: #fff;
+  color: #34352f;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 22%);
+  transition: transform 160ms ease, background-color 160ms ease;
 }
 
-@keyframes pin-in {
-  from {
-    opacity: 0;
-    scale: 0.8;
-  }
-  to {
-    opacity: 1;
-    scale: 1;
-  }
+.parking-map-pin.is-selected {
+  background: #252620;
+  color: #fff;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 85%), 0 2px 8px rgb(0 0 0 / 22%);
+}
+
+.parking-map-pin.is-future:not(.is-selected) {
+  border-color: #d7b56e;
+  color: #88672c;
+}
+
+.parking-map-icon:hover .parking-map-pin {
+  transform: scale(1.12);
+}
+
+.map-zoom-controls {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #eae9e4;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+}
+
+.map-zoom-controls button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: #fff;
+  color: #62635b;
+}
+
+.map-zoom-controls button:hover {
+  background: #f7f6f3;
+}
+
+.map-zoom-controls span {
+  height: 1px;
+  background: #eeede9;
 }
