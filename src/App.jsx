@@ -6,7 +6,6 @@ import {
   MapContainer,
   Marker,
   Polyline,
-  TileLayer,
   Tooltip,
   useMap,
 } from "react-leaflet";
@@ -39,6 +38,7 @@ import {
 } from "lucide-react";
 import { isAthensWideSearch, matchesSearch } from "./search.js";
 import { getAvailableSpaces, parkingSpots } from "./parkingData.js";
+import ImaginaryMapLayer from "./ImaginaryMapLayer.jsx";
 
 const parkingAreas = [...new Set(parkingSpots.map((spot) => spot.area))];
 const nearbyParkingLimit = 8;
@@ -1221,14 +1221,14 @@ function App() {
                 aria-label={`Διαδραστικός χάρτης της Αθήνας με ${spots.length} parking`}
                 center={[37.978, 23.734]}
                 className="absolute inset-0 z-0"
+                maxZoom={18}
+                minZoom={10}
                 scrollWheelZoom
+                attributionControl={false}
                 zoom={12}
                 zoomControl={false}
               >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                />
+                <ImaginaryMapLayer />
                 <FitParkingSpots
                   routeCoordinates={directionsResult?.coordinates}
                   spots={spots}
@@ -1309,7 +1309,7 @@ function App() {
               </div>
               <div className="absolute bottom-4 left-4 rounded-lg border border-white/80 bg-white/90 px-3 py-2 text-[10px] text-[#777870] shadow-sm backdrop-blur">
                 <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#b79c67]" />
-                Θέσεις parking
+                Θέσεις parking <span className="mx-1.5 text-[#c5c2ba]">·</span> Υποθετικός χάρτης Αθήνας
               </div>
             </div>
           )}
