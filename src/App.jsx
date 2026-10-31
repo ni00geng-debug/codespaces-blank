@@ -93,6 +93,20 @@ function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [parkingType, setParkingType] = useState("Όλα");
   const [sortByDistance, setSortByDistance] = useState(true);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authUser, setAuthUser] = useState(() => {
+    const email = window.localStorage.getItem("parkly-demo-session-email");
+    if (!email) return null;
+    return {
+      email,
+      name: window.localStorage.getItem("parkly-demo-session-name") || email,
+    };
+  });
 
   const isFuture = arrivalMode === "future";
   const filteredSpots = useMemo(() => {
@@ -156,6 +170,72 @@ function App() {
     );
   }
 
+  function openAuth() {
+    setAuthMode("signin");
+    setAuthEmail(authUser?.email ?? "");
+    setAuthName("");
+    setAuthError("");
+    setAuthOpen(true);
+  }
+
+  function submitDemoAuth(event) {
+    event.preventDefault();
+    const email = authEmail.trim().toLowerCase();
+    const accountKey = `parkly-demo-account:${email}`;
+    const storedName = window.localStorage.getItem(accountKey);
+
+    if (authMode === "signup") {
+      if (storedName !== null) {
+        setAuthError("Υπάρχει ήδη λογαριασμός με αυτό το email. Συνδέσου.");
+        return;
+      }
+
+      const name = authName.trim();
+      if (!name) {
+        setAuthError("Συμπλήρωσε το ονοματεπώνυμό σου.");
+        return;
+      }
+      window.localStorage.setItem(accountKey, name);
+      window.localStorage.setItem("parkly-demo-session-email", email);
+      window.localStorage.setItem("parkly-demo-session-name", name);
+      setAuthUser({ email, name });
+      setAuthOpen(false);
+      announce(`Ο demo λογαριασμός δημιουργήθηκε για το ${email}.`);
+      return;
+    }
+
+    if (storedName === null) {
+      setAuthError("Δεν βρέθηκε λογαριασμός με αυτό το email. Δημιούργησε λογαριασμό.");
+      return;
+    }
+
+    const name = storedName || email;
+    window.localStorage.setItem("parkly-demo-session-email", email);
+    window.localStorage.setItem("parkly-demo-session-name", name);
+    setAuthUser({ email, name });
+    setAuthOpen(false);
+    announce(`Συνδέθηκες ως ${email}.`);
+  }
+
+  function signOut() {
+    window.localStorage.removeItem("parkly-demo-session-email");
+    window.localStorage.removeItem("parkly-demo-session-name");
+    setAuthUser(null);
+    announce("Αποσυνδέθηκες από τον demo λογαριασμό.");
+  }
+
+  useEffect(() => {
+    if (!howItWorksOpen && !authOpen) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") {
+        setHowItWorksOpen(false);
+        setAuthOpen(false);
+      }
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [authOpen, howItWorksOpen]);
+
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-[#20211f]">
       <header className="relative z-20 border-b border-[#eaeae6] bg-white">
@@ -180,7 +260,7 @@ function App() {
             </button>
             <button
               className="transition-colors hover:text-[#bd9141]"
-              onClick={() => announce("Η εφαρμογή Parkly είναι έτοιμη για χρήση.")}
+              onClick={() => setHowItWorksOpen(true)}
             >
               Πώς λειτουργεί
             </button>
@@ -188,10 +268,10 @@ function App() {
 
           <div className="flex items-center gap-3">
             <button
-              className="hidden items-center gap-2 rounded-full border border-[#e8e7e2] px-4 py-2 text-[12px] font-medium transition hover:border-[#c5a15e] sm:flex"
-              onClick={() => announce("Σύνδεση λογαριασμού — διαθέσιμη σύντομα.")}
+              className="flex items-center gap-2 rounded-full border border-[#e8e7e2] px-3 py-2 text-[11px] font-medium transition hover:border-[#c5a15e] sm:px-4 sm:text-[12px]"
+              onClick={authUser ? signOut : openAuth}
             >
-              <Users size={15} /> Σύνδεση
+              <Users size={15} /> {authUser ? "Αποσύνδεση" : "Σύνδεση"}
             </button>
             <button
               aria-label={favoritesOnly ? "Εμφάνιση όλων των parking" : "Τα αγαπημένα μου"}
@@ -202,7 +282,7 @@ function App() {
               <Bookmark size={16} fill={favoritesOnly ? "currentColor" : "none"} />
             </button>
             <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-[#eee8dc] text-xs font-semibold text-[#82652e] sm:flex">
-              Α
+              {authUser ? (authUser.name[0] || authUser.email[0]).toLocaleUpperCase("el") : "Α"}
             </div>
           </div>
         </div>
@@ -270,22 +350,41 @@ function App() {
                   <CalendarDays size={13} /> Μελλοντική
                 </button>
                 {isFuture && (
-                  <label className="relative ml-auto">
-                    <span className="sr-only">Επιλογή ώρας πρόβλεψης</span>
-                    <input
-                      aria-label="Επιλογή ώρας πρόβλεψης"
-                      className="w-[100px] cursor-pointer rounded-md border border-[#e9e3d6] bg-[#fcfaf6] px-2 py-1 text-[12px] font-semibold text-[#765b29] outline-none focus:border-[#c8a35d]"
-                      lang="en-GB"
-                      max="23:59"
-                      min="00:00"
-                      onChange={(event) => {
-                        if (event.target.value) setSelectedTime(event.target.value);
-                      }}
-                      step="60"
-                      type="time"
-                      value={selectedTime}
-                    />
-                  </label>
+                  <div className="ml-auto flex items-center gap-1">
+                    <label>
+                      <span className="sr-only">Ώρα άφιξης, από 0 έως 23</span>
+                      <select
+                        aria-label="Ώρα άφιξης, από 0 έως 23"
+                        className="rounded-md border border-[#e9e3d6] bg-[#fcfaf6] px-1.5 py-1 text-[12px] font-semibold text-[#765b29] outline-none focus:border-[#c8a35d]"
+                        onChange={(event) =>
+                          setSelectedTime(`${event.target.value}:${selectedTime.slice(3)}`)
+                        }
+                        value={selectedTime.slice(0, 2)}
+                      >
+                        {Array.from({ length: 24 }, (_, hour) => {
+                          const value = String(hour).padStart(2, "0");
+                          return <option key={value} value={value}>{value}</option>;
+                        })}
+                      </select>
+                    </label>
+                    <span aria-hidden="true" className="text-[12px] font-semibold text-[#765b29]">:</span>
+                    <label>
+                      <span className="sr-only">Λεπτά άφιξης</span>
+                      <select
+                        aria-label="Λεπτά άφιξης"
+                        className="rounded-md border border-[#e9e3d6] bg-[#fcfaf6] px-1.5 py-1 text-[12px] font-semibold text-[#765b29] outline-none focus:border-[#c8a35d]"
+                        onChange={(event) =>
+                          setSelectedTime(`${selectedTime.slice(0, 2)}:${event.target.value}`)
+                        }
+                        value={selectedTime.slice(3)}
+                      >
+                        {Array.from({ length: 60 }, (_, minute) => {
+                          const value = String(minute).padStart(2, "0");
+                          return <option key={value} value={value}>{value}</option>;
+                        })}
+                      </select>
+                    </label>
+                  </div>
                 )}
               </div>
             </div>
@@ -597,6 +696,142 @@ function App() {
           </div>
         </footer>
       </main>
+
+      {howItWorksOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[#20211f]/40 p-4"
+          onClick={() => setHowItWorksOpen(false)}
+        >
+          <section
+            aria-labelledby="how-it-works-title"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[1.4px] text-[#bd9141]">
+                  parkly.
+                </p>
+                <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.5px]" id="how-it-works-title">
+                  Πώς λειτουργεί η εφαρμογή
+                </h2>
+              </div>
+              <button
+                aria-label="Κλείσιμο"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#777870] hover:bg-[#f4f3f0]"
+                onClick={() => setHowItWorksOpen(false)}
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <ol className="mt-5 space-y-4 text-[13px] leading-relaxed text-[#686963]">
+              <li><span className="mr-2 font-semibold text-[#a47b35]">1.</span>Γράψε την περιοχή ή τον προορισμό σου στην αναζήτηση.</li>
+              <li><span className="mr-2 font-semibold text-[#a47b35]">2.</span>Δες τα κοντινά parking στον χάρτη ή στη λίστα και σύγκρινε τις διαθέσιμες θέσεις.</li>
+              <li><span className="mr-2 font-semibold text-[#a47b35]">3.</span>Για μελλοντική άφιξη, επίλεξε ώρα και δες την ενδεικτική πρόβλεψη.</li>
+            </ol>
+            <p className="mt-5 rounded-lg bg-[#fcfaf5] px-3 py-2 text-[11px] leading-relaxed text-[#8a7959]">
+              Οι θέσεις και οι προβλέψεις είναι ενδεικτικά δεδομένα mockup, όχι ζωντανή ενημέρωση.
+            </p>
+            <button
+              className="mt-5 w-full rounded-xl bg-[#20211f] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#353630]"
+              onClick={() => setHowItWorksOpen(false)}
+            >
+              Κατάλαβα
+            </button>
+          </section>
+        </div>
+      )}
+
+      {authOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[#20211f]/40 p-4"
+          onClick={() => setAuthOpen(false)}
+        >
+          <section
+            aria-labelledby="auth-title"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[1.4px] text-[#bd9141]">
+                  parkly.
+                </p>
+                <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.5px]" id="auth-title">
+                  {authMode === "signup" ? "Δημιουργία λογαριασμού" : "Σύνδεση"}
+                </h2>
+              </div>
+              <button
+                aria-label="Κλείσιμο"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#777870] hover:bg-[#f4f3f0]"
+                onClick={() => setAuthOpen(false)}
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <div className="mt-5 grid grid-cols-2 rounded-lg bg-[#f4f3f0] p-1">
+              <button
+                aria-pressed={authMode === "signin"}
+                className={`rounded-md px-3 py-2 text-[12px] font-medium ${authMode === "signin" ? "bg-white text-[#20211f] shadow-sm" : "text-[#777870]"}`}
+                onClick={() => { setAuthMode("signin"); setAuthError(""); }}
+                type="button"
+              >
+                Σύνδεση
+              </button>
+              <button
+                aria-pressed={authMode === "signup"}
+                className={`rounded-md px-3 py-2 text-[12px] font-medium ${authMode === "signup" ? "bg-white text-[#20211f] shadow-sm" : "text-[#777870]"}`}
+                onClick={() => { setAuthMode("signup"); setAuthError(""); }}
+                type="button"
+              >
+                Δημιουργία λογαριασμού
+              </button>
+            </div>
+            <form className="mt-5 space-y-4" onSubmit={submitDemoAuth}>
+              {authMode === "signup" && (
+                <label className="block text-[12px] font-medium text-[#55564f]">
+                  Ονοματεπώνυμο
+                  <input
+                    autoComplete="name"
+                    className="mt-1.5 w-full rounded-lg border border-[#e9e8e3] px-3 py-2.5 text-[13px] outline-none focus:border-[#c8a35d]"
+                    onChange={(event) => setAuthName(event.target.value)}
+                    required
+                    value={authName}
+                  />
+                </label>
+              )}
+              <label className="block text-[12px] font-medium text-[#55564f]">
+                Email
+                <input
+                  autoComplete="email"
+                  className="mt-1.5 w-full rounded-lg border border-[#e9e8e3] px-3 py-2.5 text-[13px] outline-none focus:border-[#c8a35d]"
+                  onChange={(event) => { setAuthEmail(event.target.value); setAuthError(""); }}
+                  placeholder="name@example.com"
+                  required
+                  type="email"
+                  value={authEmail}
+                />
+              </label>
+              {authError && (
+                <p className="text-[12px] text-red-700" role="alert">{authError}</p>
+              )}
+              <button
+                className="w-full rounded-xl bg-[#20211f] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#353630]"
+                type="submit"
+              >
+                {authMode === "signup" ? "Δημιουργία λογαριασμού" : "Σύνδεση με email"}
+              </button>
+            </form>
+            <p className="mt-4 rounded-lg bg-[#fcfaf5] px-3 py-2 text-[11px] leading-relaxed text-[#8a7959]">
+              Demo mockup: δεν αποστέλλεται email και δεν γίνεται πραγματική επαλήθευση. Τα demo προφίλ αποθηκεύονται μόνο σε αυτό το πρόγραμμα περιήγησης.
+            </p>
+          </section>
+        </div>
+      )}
 
       {notice && (
         <div className="fixed bottom-5 left-1/2 z-50 flex max-w-[calc(100%-32px)] -translate-x-1/2 items-center gap-2 rounded-xl bg-[#252620] px-4 py-3 text-[12px] text-white shadow-xl" role="status">
